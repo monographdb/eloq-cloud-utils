@@ -78,6 +78,12 @@ func (c *YamlConfigParser) Parse(rawConf string) (map[string]string, error) {
 // flattenYaml recursively flattens a YAML structure into a flat map with dot-separated keys.
 // This is a helper function for Parse.
 func flattenYaml(data any, prefix string, result map[string]string) {
+	// Treat explicit nil as empty string to avoid "<nil>" output
+	if data == nil {
+		result[prefix] = ""
+		return
+	}
+
 	switch v := data.(type) {
 	case map[string]any:
 		for key, value := range v {
