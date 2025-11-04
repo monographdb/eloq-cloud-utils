@@ -3,11 +3,10 @@ package parser
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/samber/lo"
 	"gopkg.in/ini.v1"
-
-	"strings"
 )
 
 // IniConfigParser provides methods to handle INI-formatted configuration files.
@@ -26,7 +25,6 @@ func (c *IniConfigParser) UpsertConfig(oldConfMap, newConfigMap map[string]strin
 		oldConfMap[key] = val
 	}
 	return writeConfigToStr(oldConfMap)
-
 }
 
 // UpdateConfig updates an existing configuration map with new values.
@@ -141,11 +139,10 @@ func writeConfigToStr(confMap map[string]string) string {
 			builder.WriteString("[" + tmpSection[0] + "]\n")
 		}
 		if val == IgnoreValue {
-			builder.WriteString(tmpSection[1] + "\n")
+			builder.WriteString(tmpSection[1] + "=\n")
 		} else {
 			builder.WriteString(tmpSection[1] + "=" + val + "\n")
 		}
 	}
 	return builder.String()
-
 }
