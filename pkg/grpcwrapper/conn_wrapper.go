@@ -25,7 +25,7 @@ type RpcConnWrapper struct {
 	// Key:   The destination server address (e.g., "127.0.0.1:8080" or "proxy-service.namespace:9090").
 	// Value: The established gRPC *ClientConn.
 	// Purpose: To ensure all components reuse the same physical connection for a given endpoint.
-	rpcConnSet *xsync.MapOf[string, *grpc.ClientConn]
+	rpcConnSet *xsync.Map[string, *grpc.ClientConn]
 
 	// group ensures that concurrent dial requests to the same address are collapsed
 	// into a single execution, preventing "thundering herd" or "cache miss storm".
@@ -35,11 +35,20 @@ type RpcConnWrapper struct {
 func NewRpcConnWrapper() *RpcConnWrapper {
 	rpcInitOnce.Do(func() {
 		instance = &RpcConnWrapper{
-			rpcConnSet: xsync.NewMapOf[string, *grpc.ClientConn](),
+			rpcConnSet: xsync.NewMap[string, *grpc.ClientConn](),
 			group:      singleflight.Group{},
 		}
 	})
 	return instance
+}
+
+// isConnAlive checks if the gRPC connection is healthy and not in a failure/shutdown state.
+func isConnAlive(conn *grpc.ClientConn) bool {
+	state := conn.GetState()
+	// Ready: OK; Idle: Lazy; Connecting: In progress.
+	// TransientFailure: Potential broken/restarting server.
+	// Shutdown: Definitely closed.
+	return state != connectivity.Shutdown && state != connectivity.TransientFailure
 }
 
 // GetConn lazily creates or retrieves a cached gRPC connection for the given address.
@@ -47,15 +56,10 @@ func NewRpcConnWrapper() *RpcConnWrapper {
 func (g *RpcConnWrapper) GetConn(serverAddr string) (*grpc.ClientConn, bool) {
 	// 1. Fast path: check if the connection already exists in the cache for this address.
 	if val, ok := g.rpcConnSet.Load(serverAddr); ok {
-		state := val.GetState()
-		// If the connection is definitely dead or in a persistent failure state, remove and fall through.
-		// Ready: OK; Idle: Lazy; Connecting: In progress.
-		// TransientFailure: Potential broken/restarting server.
-		// Shutdown: Definitely closed.
-		if state != connectivity.Shutdown && state != connectivity.TransientFailure {
+		if isConnAlive(val) {
 			return val, true
 		}
-		// Connection issues detected, remove it from the cache.
+		// Connection issues detected or stale, remove it from the cache.
 		g.rpcConnSet.Delete(serverAddr)
 	}
 
@@ -64,8 +68,7 @@ func (g *RpcConnWrapper) GetConn(serverAddr string) (*grpc.ClientConn, bool) {
 	actual, err, _ := g.group.Do(serverAddr, func() (interface{}, error) {
 		// Double check after acquiring the singleflight lock to avoid race conditions.
 		if checkVal, innerOk := g.rpcConnSet.Load(serverAddr); innerOk {
-			state := checkVal.GetState()
-			if state != connectivity.Shutdown && state != connectivity.TransientFailure {
+			if isConnAlive(checkVal) {
 				return checkVal, nil
 			}
 			g.rpcConnSet.Delete(serverAddr)
@@ -94,8 +97,8 @@ func (g *RpcConnWrapper) Close() {
 		_ = value.Close()
 		return true
 	})
-	// Re-initialize the map to release references.
-	g.rpcConnSet = xsync.NewMapOf[string, *grpc.ClientConn]()
+	// Re-initialize the map to release references using the non-deprecated NewMap.
+	g.rpcConnSet = xsync.NewMap[string, *grpc.ClientConn]()
 }
 
 // DeleteConn removes and returns a specific connection from the cache.
