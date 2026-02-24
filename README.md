@@ -13,14 +13,14 @@ Shared Go utilities and development infrastructure for EloqCloud services.
 
 Used to provide a consistent build environment across all projects.
 
-**Image Tag**: `eloqdata/eloqcloud-dev:go-1.26`
+**Image Tag**: `eloqdata/eloqcloud-dev:1.26`
 
 ### How to Use
 
 In your project's `Dockerfile`, use it as the builder stage:
 
 ```dockerfile
-FROM eloqdata/eloqcloud-dev:go-1.26 AS builder
+FROM eloqdata/eloqcloud-dev:1.26 AS builder
 
 WORKDIR /workspace
 COPY go.mod go.sum ./

@@ -1,7 +1,7 @@
 # EloqCloud Development Base Image Makefile
 
 # Image configuration
-IMAGE = eloqdata/eloqcloud-dev:go-1.26
+IMAGE = eloqdata/eloqcloud-dev:1.26
 
 # Build platforms
 PLATFORMS ?= linux/amd64,linux/arm64

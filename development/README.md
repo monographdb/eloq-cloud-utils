@@ -2,7 +2,7 @@
 
 This directory contains the source and configuration for the EloqCloud standardized development base image. This image provides a consistent, pre-configured environment for building all EloqCloud microservices.
 
-**Image Tag**: `eloqdata/eloqcloud-dev:go-1.26`
+**Image Tag**: `eloqdata/eloqcloud-dev:1.26`
 
 ## Included Tools
 
@@ -45,13 +45,13 @@ Replace the existing `FROM` instruction in your service's `Dockerfile` to use th
 
 ```dockerfile
 # Use the EloqCloud development base image as the builder
-FROM eloqdata/eloqcloud-dev:go-1.26 AS builder
+FROM eloqdata/eloqcloud-dev:1.26 AS builder
 ```
 
 ### Full Builder Example
 
 ```dockerfile
-FROM eloqdata/eloqcloud-dev:go-1.26 AS builder
+FROM eloqdata/eloqcloud-dev:1.26 AS builder
 
 ARG TARGETOS
 ARG TARGETARCH
