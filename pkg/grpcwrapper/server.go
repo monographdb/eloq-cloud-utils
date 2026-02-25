@@ -1,3 +1,5 @@
+// Package grpcwrapper provides a production-ready gRPC client and server wrapper
+// with built-in connection pooling, retry policies, and TLS support.
 package grpcwrapper
 
 import (

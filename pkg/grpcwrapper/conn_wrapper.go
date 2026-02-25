@@ -1,3 +1,5 @@
+// Package grpcwrapper provides a production-ready gRPC client and server wrapper
+// with built-in connection pooling, retry policies, and TLS support.
 package grpcwrapper
 
 import (
@@ -14,10 +16,6 @@ var (
 	instance    *RpcConnWrapper
 )
 
-type ClientConnInterface interface {
-	grpc.ClientConnInterface
-}
-
 // RpcConnWrapper provides a thread-safe singleton pool for gRPC connections.
 // It ensures that only one physical TCP connection is established per destination address.
 type RpcConnWrapper struct {
@@ -32,6 +30,7 @@ type RpcConnWrapper struct {
 	group singleflight.Group
 }
 
+// NewRpcConnWrapper returns the singleton instance of RpcConnWrapper.
 func NewRpcConnWrapper() *RpcConnWrapper {
 	rpcInitOnce.Do(func() {
 		instance = &RpcConnWrapper{
@@ -53,7 +52,7 @@ func isConnAlive(conn *grpc.ClientConn) bool {
 
 // GetConn lazily creates or retrieves a cached gRPC connection for the given address.
 // The 'serverAddr' parameter is the target host:port string which serves as the cache key.
-func (g *RpcConnWrapper) GetConn(serverAddr string) (*grpc.ClientConn, bool) {
+func (g *RpcConnWrapper) GetConn(serverAddr string, opts ...DialOption) (*grpc.ClientConn, bool) {
 	// 1. Fast path: check if the connection already exists in the cache for this address.
 	if val, ok := g.rpcConnSet.Load(serverAddr); ok {
 		if isConnAlive(val) {
@@ -75,7 +74,7 @@ func (g *RpcConnWrapper) GetConn(serverAddr string) (*grpc.ClientConn, bool) {
 		}
 
 		// Perform the actual gRPC dial.
-		newConn, err := NewRpcConn(serverAddr)
+		newConn, err := newRpcConn(serverAddr, opts...)
 		if err != nil {
 			return nil, err
 		}
